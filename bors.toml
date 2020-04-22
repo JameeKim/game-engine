@@ -1,0 +1,5 @@
+status = [
+    "continuous-integration/travis-ci/push"
+]
+timout-sec = 3600
+delete-merged-branches = false

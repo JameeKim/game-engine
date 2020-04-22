@@ -1,0 +1,47 @@
+[config]
+min_version = "0.30.5"
+default_to_workspace = false
+modify_core_tasks = { namespace = "default" }
+
+[tasks.pre-commit-flow]
+dependencies = [
+    "format",
+    "lint-strict",
+    "check-all",
+]
+
+[tasks.lint-strict]
+condition = { channels = ["stable"] }
+install_crate = "clippy"
+command = "cargo"
+args = ["clippy", "--all", "--all-targets", "--", "-D", "warnings"]
+
+[tasks.check-all]
+command = "cargo"
+args = ["check", "--all", "--all-targets"]
+
+[tasks.test-all]
+command = "cargo"
+args = ["test", "--all"]
+
+[tasks.build-all]
+command = "cargo"
+args = ["build", "--all", "--all-targets"]
+
+[tasks.format]
+install_crate = "rustfmt"
+command = "cargo"
+args = ["fmt", "--all"]
+
+[tasks.lint]
+install_crate = "clippy"
+command = "cargo"
+args = ["clippy", "--all", "--all-targets"]
+
+[tasks.test-doc]
+command = "cargo"
+args = ["test", "--all", "--doc"]
+
+[tasks.test-lib]
+command = "cargo"
+args = ["test", "--all", "--lib"]

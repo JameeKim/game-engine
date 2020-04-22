@@ -11,7 +11,7 @@ use crate::ecs::storage::{ArchetypeData, Component, ComponentStorage, ComponentT
 /// ```rust
 /// # use game_engine::core::All;
 /// # use game_engine::ecs::prelude::*;
-/// # fn main() {
+/// #
 /// # let mut world = World::new();
 /// #
 /// // insert 2 entities with `u8`, 1 entity with `usize`, and 1 entity with both `u8` and `usize`
@@ -30,7 +30,6 @@ use crate::ecs::storage::{ArchetypeData, Component, ComponentStorage, ComponentT
 /// // entities with `usize`
 /// let usize_query = All::query().filter(component::<usize>());
 /// assert_eq!(usize_query.iter_immutable(&world).count(), 2);
-/// # }
 /// ```
 ///
 /// [`IntoQuery`]: ../legion/query/trait.IntoQuery.html
@@ -114,6 +113,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)]
     fn all_entities_query() {
         let world = make_world();
 
