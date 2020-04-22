@@ -90,7 +90,7 @@ pub fn build_hierarchy_sync_system() -> Box<dyn Schedulable> {
                     if let Some(children) = world
                         .get_component_mut::<Children>(parent) // get a real attached component
                         .as_deref_mut()
-                        .or(children_to_insert.get_mut(&parent))
+                        .or_else(|| children_to_insert.get_mut(&parent))
                     // get a new component to be added later
                     {
                         // There is already a `Children` component to modify
@@ -155,7 +155,7 @@ fn delete_entities_and_children_recursive<I>(
         if let Some(children) = world
             .get_component_mut::<Children>(entity)
             .as_deref()
-            .or(children_to_insert.get(&entity))
+            .or_else(|| children_to_insert.get(&entity))
         {
             entities_to_remove.replace(children.iter().copied().collect::<Vec<_>>());
         }
@@ -177,11 +177,6 @@ mod tests {
     use super::build_hierarchy_sync_system;
     use crate::components::{Children, Parent, PreviousParent};
     use crate::ecs::prelude::*;
-
-    fn run_system(system: &Box<dyn Schedulable>, world: &mut World) {
-        system.run(world);
-        system.command_buffer_mut().write(world);
-    }
 
     #[test]
     fn hierarchy_sync_system() {
@@ -205,7 +200,8 @@ mod tests {
         let p5 = Parent::new(g1[2]);
         let g2 = world.insert((), vec![(7, p3), (8, p5), (9, p5)]).to_vec();
 
-        run_system(&system, &mut world);
+        system.run(&world);
+        system.command_buffer_mut().write(&mut world);
 
         assert_eq!(***world.get_component::<Children>(r[0]).unwrap(), g1[0..2]);
         assert_eq!(***world.get_component::<Children>(r[1]).unwrap(), g1[2..4]);
@@ -234,7 +230,8 @@ mod tests {
         world.remove_component::<Parent>(g1[2]);
         world.add_component(r[0], Parent::new(g1[2]));
 
-        run_system(&system, &mut world);
+        system.run(&world);
+        system.command_buffer_mut().write(&mut world);
 
         assert!(!world.is_alive(g2[0]));
         assert_eq!(***world.get_component::<Children>(g1[3]).unwrap(), [g2[2]]);

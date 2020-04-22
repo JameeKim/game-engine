@@ -107,6 +107,7 @@ mod position_math {
     impl Mul<Position> for Translation3<f32> {
         type Output = Position;
 
+        #[allow(clippy::suspicious_arithmetic_impl)]
         fn mul(self, rhs: Position) -> Self::Output {
             rhs + self
         }

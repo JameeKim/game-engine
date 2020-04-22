@@ -59,71 +59,69 @@
 //!         })
 //! }
 //!
-//! fn main() {
-//!     let mut world = World::new();
+//! let mut world = World::new();
 //!
-//!     let mut schedule = Schedule::builder()
-//!         .add_system(build_linear_movement_system())
-//!         .add_system(build_angular_movement_system())
-//!         .wrap(TransformSchedule::builder())
-//!         // Here, you can add more systems that can run together with `hierarchy_sync`,
-//!         // `world_transform_update`, and `parent_transform_update` systems and before
-//!         // `hierarchical_transform_update` system
-//!         .end_transform_systems()
-//!         .build();
+//! let mut schedule = Schedule::builder()
+//!     .add_system(build_linear_movement_system())
+//!     .add_system(build_angular_movement_system())
+//!     .wrap(TransformSchedule::builder())
+//!     // Here, you can add more systems that can run together with `hierarchy_sync`,
+//!     // `world_transform_update`, and `parent_transform_update` systems and before
+//!     // `hierarchical_transform_update` system
+//!     .end_transform_systems()
+//!     .build();
 //!
-//!     // The above is the same as below
-//!     // let mut schedule = Schedule::builder()
-//!     //     .add_system(build_linear_movement_system())
-//!     //     .add_system(build_angular_movement_system())
-//!     //     .flush()
-//!     //     .add_system(build_hierarchy_sync_system())
-//!     //     .add_system(build_world_transform_update_system())
-//!     //     .add_system(build_parent_transform_update_system())
-//!     //     // Add more systems here
-//!     //     .flush()
-//!     //     .add_system(build_hierarchical_transform_update_system())
-//!     //     .build();
+//! // The above is the same as below
+//! // let mut schedule = Schedule::builder()
+//! //     .add_system(build_linear_movement_system())
+//! //     .add_system(build_angular_movement_system())
+//! //     .flush()
+//! //     .add_system(build_hierarchy_sync_system())
+//! //     .add_system(build_world_transform_update_system())
+//! //     .add_system(build_parent_transform_update_system())
+//! //     // Add more systems here
+//! //     .flush()
+//! //     .add_system(build_hierarchical_transform_update_system())
+//! //     .build();
 //!
-//!     let moving = world.insert((), Some((
-//!         LinearVelocity(Vector3::new(10.0, -2.0, 0.0)),
-//!         Position::zero(),
-//!     )))[0];
+//! let moving = world.insert((), Some((
+//!     LinearVelocity(Vector3::new(10.0, -2.0, 0.0)),
+//!     Position::zero(),
+//! )))[0];
 //!
-//!     let rotating = world.insert((), Some((
-//!         AngularVelocity(Vector3::new(0.0, 3.0, 0.0)),
-//!         Rotation::identity(),
-//!         Parent::new(moving),
-//!     )))[0];
+//! let rotating = world.insert((), Some((
+//!     AngularVelocity(Vector3::new(0.0, 3.0, 0.0)),
+//!     Rotation::identity(),
+//!     Parent::new(moving),
+//! )))[0];
 //!
-//!     schedule.execute(&mut world);
+//! schedule.execute(&mut world);
 //!
-//!     // `WorldTransform` is inserted by `world_transform_update` system
-//!     let moving_transform = *world.get_component::<WorldTransform>(moving).unwrap();
-//!     assert!((moving_transform.m14 - 0.1).abs() < EPSILON); // x coordinate
-//!     assert!((moving_transform.m24 - -0.02).abs() < EPSILON); // y coordinate
-//!     assert_eq!(moving_transform.m34, 0.0); // z coordinate
+//! // `WorldTransform` is inserted by `world_transform_update` system
+//! let moving_transform = *world.get_component::<WorldTransform>(moving).unwrap();
+//! assert!((moving_transform.m14 - 0.1).abs() < EPSILON); // x coordinate
+//! assert!((moving_transform.m24 - -0.02).abs() < EPSILON); // y coordinate
+//! assert_eq!(moving_transform.m34, 0.0); // z coordinate
 //!
-//!     // The position follows the parent entity
-//!     let rotating_transform = *world.get_component::<WorldTransform>(rotating).unwrap();
-//!     assert!((rotating_transform.m14 - 0.1).abs() < EPSILON); // x coordinate
-//!     assert!((rotating_transform.m24 - -0.02).abs() < EPSILON); // y coordinate
-//!     assert_eq!(rotating_transform.m34, 0.0); // z coordinate
+//! // The position follows the parent entity
+//! let rotating_transform = *world.get_component::<WorldTransform>(rotating).unwrap();
+//! assert!((rotating_transform.m14 - 0.1).abs() < EPSILON); // x coordinate
+//! assert!((rotating_transform.m24 - -0.02).abs() < EPSILON); // y coordinate
+//! assert_eq!(rotating_transform.m34, 0.0); // z coordinate
 //!
-//!     // The rotation is propagated to the `WorldTransform`
-//!     let mut rotation = *rotating_transform;
-//!     rotation.m14 -= rotating_transform.m14;
-//!     rotation.m24 -= rotating_transform.m24;
-//!     rotation.m34 -= rotating_transform.m34;
-//!     assert_eq!(rotation, UnitQuaternion::new(Vector3::new(0.0, 0.03, 0.0)).to_homogeneous());
+//! // The rotation is propagated to the `WorldTransform`
+//! let mut rotation = *rotating_transform;
+//! rotation.m14 -= rotating_transform.m14;
+//! rotation.m24 -= rotating_transform.m24;
+//! rotation.m34 -= rotating_transform.m34;
+//! assert_eq!(rotation, UnitQuaternion::new(Vector3::new(0.0, 0.03, 0.0)).to_homogeneous());
 //!
-//!     // The position relative to the parent is still at zero
-//!     let parent_transform = *world.get_component::<ParentTransform>(rotating).unwrap();
-//!     assert_eq!(
-//!         [parent_transform.m14, parent_transform.m24, parent_transform.m34],
-//!         [0.0, 0.0, 0.0]
-//!     );
-//! }
+//! // The position relative to the parent is still at zero
+//! let parent_transform = *world.get_component::<ParentTransform>(rotating).unwrap();
+//! assert_eq!(
+//!     [parent_transform.m14, parent_transform.m24, parent_transform.m34],
+//!     [0.0, 0.0, 0.0]
+//! );
 //! ```
 //!
 //! [`Position`]: ../components/struct.Position.html

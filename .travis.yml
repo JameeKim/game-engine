@@ -1,0 +1,35 @@
+language: rust
+cache: cargo
+
+branches:
+  only:
+    - staging
+    - trying
+    - master
+
+os:
+  - linux
+
+rust:
+  - stable
+  - nightly
+
+jobs:
+  allow_failures:
+    - rust: nightly
+  fast_finish: true
+
+install:
+  - if [ "$TRAVIS_RUST_VERSION" == "stable" ]; then
+      rustup component add rustfmt clippy --toolchain stable;
+    fi
+
+script:
+  - if [ "$TRAVIS_RUST_VERSION" == "stable" ]; then
+      cargo fmt --all -- --check;
+    fi
+  - cargo check --all --all-targets
+  - if [ "$TRAVIS_RUST_VERSION" == "stable" ]; then
+      cargo clippy --all --all-targets -- -D warnings;
+    fi
+  - cargo test --all

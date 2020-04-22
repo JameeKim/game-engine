@@ -1,8 +1,8 @@
 //! Components used for tracking transforms and hierarchy
-//! 
+//!
 //! The users should only modify [`Position`], [`Rotation`], and [`Parent`] components unless they know what they are
 //! doing.
-//! 
+//!
 //! [`Position`]: ./struct.Position.html
 //! [`Rotation`]: ./struct.Rotation.html
 //! [`Parent`]: ./struct.Parent.html
