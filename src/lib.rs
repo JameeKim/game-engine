@@ -9,5 +9,8 @@
 
 pub use game_engine_app as app;
 pub use game_engine_core as core;
-pub use game_engine_core::{ecs, math};
+pub use game_engine_core::{ecs, event_channel, math};
+#[cfg(feature = "transform")]
 pub use game_engine_transform as transform;
+#[cfg(feature = "window")]
+pub use game_engine_window as window;

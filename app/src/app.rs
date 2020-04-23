@@ -1,4 +1,5 @@
 use crate::core::frame_rate::{FrameRateConfig, FrameRateKeeper};
+use crate::core::systems::ScheduleBuilder;
 use crate::core::time::{Time, Timer};
 use crate::ecs::resource::{Fetch, FetchMut, Resource};
 use crate::ecs::schedule::Schedule;
@@ -106,17 +107,19 @@ impl ApplicationBuilder {
     /// Add the given resource to the main world
     ///
     /// This silently overwrites the previously stored resource with the same type if it exists.
-    pub fn add_resource<R: Resource>(mut self, resource: R) -> Self {
+    pub fn with_resource<R: Resource>(mut self, resource: R) -> Self {
         self.main_world.resources.insert(resource);
         self
     }
 
     /// Build and create a new instance of the app from the given systems
-    pub fn build(self, systems: Schedule) -> Application {
+    pub fn build(self, schedule_builder: ScheduleBuilder) -> Application {
         let ApplicationBuilder {
             universe,
-            main_world,
+            mut main_world,
         } = self;
+
+        let systems = schedule_builder.build(&mut main_world);
 
         Application {
             universe,

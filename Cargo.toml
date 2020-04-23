@@ -2,7 +2,9 @@
 members = [
     "app",
     "core",
+    "derive",
     "transform",
+    "window",
 ]
 
 [package]
@@ -11,10 +13,25 @@ version = "0.1.0"
 authors = ["Jamee Kim <jameekim@nodaplife.me>"]
 edition = "2018"
 
+[features]
+transform = ["game-engine-transform"]
+window = ["game-engine-window"]
+
 [dependencies]
 game-engine-app = { path = "./app" }
 game-engine-core = { path = "./core" }
-game-engine-transform = { path = "./transform" }
+game-engine-transform = { path = "./transform", optional = true }
+game-engine-window = { path = "./window", optional = true }
 
 [dev-dependencies]
 log = "0.4.8"
+
+[[example]]
+name = "console"
+path = "examples/console/main.rs"
+required-features = []
+
+[[example]]
+name = "window"
+path = "examples/window/main.rs"
+required-features = ["window"]

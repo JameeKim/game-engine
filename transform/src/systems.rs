@@ -11,23 +11,24 @@
 //! 1. **Flush**
 //! 1. `hierarchical_transform_update`
 //! 1. **Flush**
-//! 1. Do late updates that do not touch anything among [`Position`], [`Rotation`], and [`Parent`] components
+//! 1. Do late updates that do not touch anything among [`Position`], [`Rotation`], and [`Parent`]
+//!    components
 //! 1. Do thread-local stuff like rendering that uses [`WorldTransform`]
 //!
 //! # That is too complicated
 //!
-//! If you are adding these systems to the [`Schedule`] [`Builder`] provided by [`legion`], consider using the
-//! [`TransformSchedule`] helper struct. For an example usage, see the example below.
+//! If you are adding these systems to the [`Schedule`] [`Builder`] provided by [`legion`], consider
+//! using the [`TransformBundle`] helper struct. For an example usage, see the example below.
 //!
-//! # Example
+//! # Examples
 //!
 //! ```rust
-//! use std::f32::EPSILON;
-//! use game_engine::core::schedule_wrapper::*; // traits from this module are needed
+//! use game_engine::core::systems::{ScheduleBuilder, SystemPriority, SystemOrder};
 //! use game_engine::ecs::prelude::*;
 //! use game_engine::math::{UnitQuaternion, Vector3};
 //! use game_engine::transform::components::*;
-//! use game_engine::transform::systems::TransformSchedule;
+//! use game_engine::transform::systems::TransformBundle;
+//! use std::f32::EPSILON;
 //!
 //! /// Linear velocity
 //! #[derive(Clone, Copy, Debug, PartialEq)]
@@ -39,7 +40,7 @@
 //!
 //! const DELTA_SECOND: f32 = 0.01;
 //!
-//! fn build_linear_movement_system() -> Box<dyn Schedulable> {
+//! fn build_linear_movement_system(_: &mut World) -> Box<dyn Schedulable> {
 //!     SystemBuilder::new("LinearMovement")
 //!         .with_query(<(Read<LinearVelocity>, Write<Position>)>::query())
 //!         .build(|_, world, _, query| {
@@ -49,7 +50,7 @@
 //!         })
 //! }
 //!
-//! fn build_angular_movement_system() -> Box<dyn Schedulable> {
+//! fn build_angular_movement_system(_: &mut World) -> Box<dyn Schedulable> {
 //!     SystemBuilder::new("AngularMovement")
 //!         .with_query(<(Read<AngularVelocity>, Write<Rotation>)>::query())
 //!         .build(|_, world, _, query| {
@@ -61,27 +62,25 @@
 //!
 //! let mut world = World::new();
 //!
-//! let mut schedule = Schedule::builder()
-//!     .add_system(build_linear_movement_system())
-//!     .add_system(build_angular_movement_system())
-//!     .wrap(TransformSchedule::builder())
-//!     // Here, you can add more systems that can run together with `hierarchy_sync`,
-//!     // `world_transform_update`, and `parent_transform_update` systems and before
-//!     // `hierarchical_transform_update` system
-//!     .end_transform_systems()
-//!     .build();
+//! let mut schedule = ScheduleBuilder::new()
+//!     .with_system_bundle(
+//!         TransformBundle::new_flush(SystemOrder::numbered(1, 0))
+//!     )
+//!     .with_system_create_fn(SystemOrder::numbered(0, 0), build_linear_movement_system)
+//!     .with_system_create_fn(SystemOrder::numbered(0, 0), build_angular_movement_system)
+//!     .with_flush(SystemOrder::numbered(0, 0))
+//!     .build(&mut world);
 //!
 //! // The above is the same as below
 //! // let mut schedule = Schedule::builder()
-//! //     .add_system(build_linear_movement_system())
-//! //     .add_system(build_angular_movement_system())
+//! //     .add_system(build_linear_movement_system(&mut world))
+//! //     .add_system(build_angular_movement_system(&mut world))
 //! //     .flush()
-//! //     .add_system(build_hierarchy_sync_system())
-//! //     .add_system(build_world_transform_update_system())
-//! //     .add_system(build_parent_transform_update_system())
-//! //     // Add more systems here
+//! //     .add_system(build_hierarchy_sync_system(&mut world))
+//! //     .add_system(build_world_transform_update_system(&mut world))
+//! //     .add_system(build_parent_transform_update_system(&mut world))
 //! //     .flush()
-//! //     .add_system(build_hierarchical_transform_update_system())
+//! //     .add_system(build_hierarchical_transform_update_system(&mut world))
 //! //     .build();
 //!
 //! let moving = world.insert((), Some((
@@ -131,7 +130,7 @@
 //! [`Schedule`]: ../../legion/schedule/struct.Schedule.html
 //! [`Builder`]: ../../legion/schedule/struct.Builder.html
 //! [`legion`]: ../../legion/index.html
-//! [`TransformSchedule`]: ./struct.TransformSchedule.html
+//! [`TransformBundle`]: ./struct.TransformBundle.html
 
 mod hierarchical_transform_update;
 mod hierarchy_sync;
@@ -142,165 +141,80 @@ pub use self::hierarchy_sync::build_hierarchy_sync_system;
 pub use self::simple_transform_update::{
     build_parent_transform_update_system, build_world_transform_update_system,
 };
+use crate::core::systems::{ScheduleBuilder, SystemBundle, SystemOrder};
+use crate::ecs::world::World;
 
-use crate::core::schedule_wrapper::{
-    ScheduleBuilder, ScheduleBuilderWrapper, ScheduleBuilderWrapperBuilder,
-};
-use crate::ecs::schedule::Schedulable;
-use std::marker::PhantomData;
-
-/// Helper struct to easily add systems for transform and hierarchy to a schedule builder
+/// [`SystemBundle`] that adds transform and hierarchy related systems
 ///
-/// # Example
-///
-/// For an example usage, see the example at the [module documentation](./index.html).
-///
-pub struct TransformSchedule<T: ScheduleBuilder> {
-    inner: T,
-    flush_before_end: bool,
+/// [`SystemBundle`]: ../../game_engine_core/systems/trait.SystemBundle.html
+#[allow(missing_copy_implementations)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TransformBundle {
+    /// The [`SystemOrder`] for first three systems
+    ///
+    /// [`SystemOrder`]: ../../game_engine_core/systems/struct.SystemOrder.html
+    pub start_order: SystemOrder,
+    /// The [`SystemOrder`] for the last system
+    ///
+    /// [`SystemOrder`]: ../../game_engine_core/systems/struct.SystemOrder.html
+    pub end_order: SystemOrder,
+    /// Whether to automatically add flush command right before adding the last system
+    pub flush_before_end: bool,
 }
 
-/// Builder of [`TransformSchedule`]
-///
-/// [`TransformSchedule`]: ./struct.TransformSchedule.html
-#[derive(Debug)]
-pub struct TransformScheduleBuilder<T: ScheduleBuilder> {
-    flush_before_start: bool,
-    flush_before_end: bool,
-    marker: PhantomData<T>,
-}
-
-impl<T: ScheduleBuilder> Default for TransformScheduleBuilder<T> {
-    fn default() -> Self {
-        TransformScheduleBuilder {
-            flush_before_start: true,
-            flush_before_end: true,
-            marker: PhantomData,
+impl TransformBundle {
+    /// Create a new instance with the given system execution order
+    pub fn new(start_order: SystemOrder) -> Self {
+        Self {
+            start_order,
+            end_order: start_order,
+            flush_before_end: false,
         }
     }
-}
 
-impl<T: ScheduleBuilder> TransformScheduleBuilder<T> {
-    /// Create a new builder with default configurations
-    ///
-    /// By default, the flushing of the command buffer is enabled.
-    pub fn new() -> Self {
-        Self::default()
+    /// Create a new instance with the given system execution order with automatic flushing
+    pub fn new_flush(start_order: SystemOrder) -> Self {
+        Self {
+            start_order,
+            end_order: start_order,
+            flush_before_end: true,
+        }
     }
 
-    /// Create a new builder that does not call `flush` anywhere
-    pub fn new_no_flush() -> Self {
-        Self::new().enforce_flush_all(false)
-    }
-
-    /// Enable or disable automatic flushing of the command buffer before adding systems at the start
-    pub fn enforce_flush_before_start(mut self, enforce: bool) -> Self {
-        self.flush_before_start = enforce;
+    /// Chain method to construct the bundle; sets the order of the first three systems
+    pub fn with_start_order(mut self, start_order: SystemOrder) -> Self {
+        self.start_order = start_order;
         self
     }
 
-    /// Enable or disable automatic flushing of the command buffer before adding systems at the end
-    pub fn enforce_flush_before_end(mut self, enforce: bool) -> Self {
-        self.flush_before_end = enforce;
+    /// Chain method to construct the bundle; sets the order of the last system
+    pub fn with_end_order(mut self, end_order: SystemOrder) -> Self {
+        self.end_order = end_order;
         self
     }
 
-    /// Enable or disable automatic flushing of the command buffer before adding systems at both the start and the end
-    pub fn enforce_flush_all(self, enforce: bool) -> Self {
-        self.enforce_flush_before_start(enforce)
-            .enforce_flush_before_end(enforce)
+    /// Chain method to construct the bundle; automatically add flush command before the last system
+    pub fn with_flush(mut self) -> Self {
+        self.flush_before_end = true;
+        self
+    }
+
+    /// Chain method to construct the bundle; do not add flush command before the last system
+    pub fn without_flush(mut self) -> Self {
+        self.flush_before_end = false;
+        self
     }
 }
 
-impl<T: ScheduleBuilder> TransformSchedule<T> {
-    /// Create a builder for this struct to help configure
-    pub fn builder() -> TransformScheduleBuilder<T> {
-        TransformScheduleBuilder::new()
-    }
-
-    /// Create a builder that does not automatically flush the command buffers
-    pub fn builder_no_flush() -> TransformScheduleBuilder<T> {
-        TransformScheduleBuilder::new_no_flush()
-    }
-
-    /// Add systems to add at the end and return the underlying schedule builder
-    ///
-    /// This is the same as calling [`ScheduleBuilderWrapper::end_wrap`], but a separate method is declared so that it
-    /// is easily distinguishable what wrapper has ended its turn.
-    ///
-    /// [`ScheduleBuilderWrapper::end_wrap`]: ../../game_engine_core/schedule_wrapper/trait.ScheduleBuilderWrapper.html#method.end_wrap
-    pub fn end_transform_systems(self) -> T {
-        let mut inner = self.inner;
+impl SystemBundle for TransformBundle {
+    fn build_systems(self, _world: &mut World, builder: &mut ScheduleBuilder) {
+        builder.add_system_create_fn(self.start_order, build_hierarchy_sync_system);
+        builder.add_system_create_fn(self.start_order, build_world_transform_update_system);
+        builder.add_system_create_fn(self.start_order, build_parent_transform_update_system);
 
         if self.flush_before_end {
-            inner = inner.flush();
+            builder.add_flush(self.end_order);
         }
-
-        inner.add_system(build_hierarchical_transform_update_system())
-    }
-}
-
-impl<T: ScheduleBuilder> ScheduleBuilder for TransformSchedule<T> {
-    fn add_system<S: Into<Box<dyn Schedulable>>>(mut self, system: S) -> Self {
-        self.inner = self.inner.add_system(system);
-        self
-    }
-
-    fn flush(mut self) -> Self {
-        self.inner = self.inner.flush();
-        self
-    }
-}
-
-impl<T: ScheduleBuilder> ScheduleBuilderWrapper<T> for TransformSchedule<T> {
-    fn end_wrap(self) -> T {
-        self.end_transform_systems()
-    }
-}
-
-impl<T: ScheduleBuilder> ScheduleBuilderWrapperBuilder<T> for TransformScheduleBuilder<T> {
-    type Wrapper = TransformSchedule<T>;
-
-    fn build_wrapper(self, inner: T) -> Self::Wrapper {
-        let TransformScheduleBuilder {
-            flush_before_start,
-            flush_before_end,
-            ..
-        } = self;
-
-        let inner = if flush_before_start {
-            inner.flush()
-        } else {
-            inner
-        };
-
-        let inner = inner
-            .add_system(build_hierarchy_sync_system())
-            .add_system(build_world_transform_update_system())
-            .add_system(build_parent_transform_update_system());
-
-        TransformSchedule {
-            inner,
-            flush_before_end,
-        }
-    }
-}
-
-impl<T: ScheduleBuilder> Clone for TransformScheduleBuilder<T> {
-    fn clone(&self) -> Self {
-        TransformScheduleBuilder {
-            flush_before_start: self.flush_before_start,
-            flush_before_end: self.flush_before_end,
-            marker: PhantomData,
-        }
-    }
-}
-
-impl<T: ScheduleBuilder> std::fmt::Debug for TransformSchedule<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("TransformSchedule")
-            .field("inner", &std::any::type_name::<T>())
-            .field("flush_before_end", &self.flush_before_end)
-            .finish()
+        builder.add_system_create_fn(self.end_order, build_hierarchical_transform_update_system);
     }
 }

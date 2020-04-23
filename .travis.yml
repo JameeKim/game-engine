@@ -28,8 +28,9 @@ script:
   - if [ "$TRAVIS_RUST_VERSION" == "stable" ]; then
       cargo fmt --all -- --check;
     fi
-  - cargo check --all --all-targets
   - if [ "$TRAVIS_RUST_VERSION" == "stable" ]; then
-      cargo clippy --all --all-targets -- -D warnings;
+      cargo clippy --workspace --all-features --all-targets -- -D warnings;
+    else
+      cargo check --workspace --all-features --all-targets;
     fi
-  - cargo test --all
+  - cargo test --workspace --all-features

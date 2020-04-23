@@ -11,22 +11,21 @@ dependencies = [
 ]
 
 [tasks.lint-strict]
-condition = { channels = ["stable"] }
 install_crate = "clippy"
 command = "cargo"
-args = ["clippy", "--all", "--all-targets", "--", "-D", "warnings"]
+args = ["clippy", "--workspace", "--all-features", "--all-targets", "--", "-D", "warnings"]
 
 [tasks.check-all]
 command = "cargo"
-args = ["check", "--all", "--all-targets"]
+args = ["check", "--workspace", "--all-features", "--all-targets"]
 
 [tasks.test-all]
 command = "cargo"
-args = ["test", "--all"]
+args = ["test", "--workspace", "--all-features"]
 
 [tasks.build-all]
 command = "cargo"
-args = ["build", "--all", "--all-targets"]
+args = ["build", "--workspace", "--all-features", "--all-targets"]
 
 [tasks.format]
 install_crate = "rustfmt"
@@ -36,12 +35,16 @@ args = ["fmt", "--all"]
 [tasks.lint]
 install_crate = "clippy"
 command = "cargo"
-args = ["clippy", "--all", "--all-targets"]
+args = ["clippy", "--workspace", "--all-features", "--all-targets"]
 
 [tasks.test-doc]
 command = "cargo"
-args = ["test", "--all", "--doc"]
+args = ["test", "--workspace", "--all-features", "--doc"]
 
 [tasks.test-lib]
 command = "cargo"
-args = ["test", "--all", "--lib"]
+args = ["test", "--workspace", "--all-features", "--lib"]
+
+[tasks.doc]
+command = "cargo"
+args = ["doc", "--all-features"]

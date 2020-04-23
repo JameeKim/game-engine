@@ -5,6 +5,7 @@ authors = ["Jamee Kim <jameekim@nodaplife.me>"]
 edition = "2018"
 
 [dependencies]
+game-engine-derive = { path = "../derive" }
 legion = "0.2.1"
 log = "0.4.8"
 nalgebra = "0.21.0"

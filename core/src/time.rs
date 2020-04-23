@@ -57,14 +57,11 @@ impl Timer {
 
     /// Start the timer, preserving the stored value from the previous run
     pub fn start(&mut self) {
-        match *self {
-            Timer::Idle { measured } => {
-                *self = Timer::Running {
-                    from: Instant::now(),
-                    start_value: measured,
-                };
-            }
-            _ => {}
+        if let Timer::Idle { measured } = *self {
+            *self = Timer::Running {
+                from: Instant::now(),
+                start_value: measured,
+            };
         }
     }
 
@@ -212,7 +209,7 @@ impl Time {
     /// Set the time scale factor
     pub fn set_scale(&mut self, new_scale: f32) {
         assert!(new_scale >= 0.0);
-        assert_ne!(new_scale, std::f32::INFINITY);
+        assert!(new_scale < std::f32::INFINITY);
         self.scale = new_scale;
     }
 }

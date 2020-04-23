@@ -1,0 +1,9 @@
+[package]
+name = "game-engine-window"
+version = "0.1.0"
+authors = ["Jamee Kim <jameekim@nodaplife.me>"]
+edition = "2018"
+
+[dependencies]
+game-engine-core = { path = "../core" }
+winit = "0.19"
