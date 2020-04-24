@@ -8,12 +8,13 @@
 )]
 
 mod builder_ext;
+pub mod frame_rate;
 mod query_all;
 pub mod schedule_wrapper;
-mod time;
+pub mod sized_queue;
+pub mod time;
 
 pub use self::builder_ext::BuilderExt;
 pub use self::query_all::All;
-pub use self::time::Time;
 pub use legion as ecs;
 pub use nalgebra as math;

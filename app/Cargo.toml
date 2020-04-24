@@ -1,0 +1,10 @@
+[package]
+name = "game-engine-app"
+version = "0.1.0"
+authors = ["Jamee Kim <jameekim@nodaplife.me>"]
+edition = "2018"
+
+[dependencies]
+fern = "0.6.0"
+game-engine-core = { path = "../core" }
+log = "0.4.8"

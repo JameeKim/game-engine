@@ -1,4 +1,95 @@
-use std::time::Duration;
+//! Measuring and keeping track of time
+
+use std::time::{Duration, Instant};
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+/// Timer that measures time
+pub enum Timer {
+    /// The timer is doing nothing
+    Idle {
+        /// The measured value from previous run; defaults to zero
+        measured: Duration,
+    },
+    /// The timer is running
+    Running {
+        /// The time the timer started to run
+        from: Instant,
+        /// The value this timer started with
+        start_value: Duration,
+    },
+}
+
+impl Default for Timer {
+    fn default() -> Self {
+        Timer::Idle {
+            measured: Duration::default(),
+        }
+    }
+}
+
+impl Timer {
+    /// Create a new instance of the timer
+    pub fn new() -> Timer {
+        Timer::default()
+    }
+
+    /// Is this timer running?
+    pub fn is_running(&self) -> bool {
+        if let Timer::Running { .. } = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Get the measured value
+    ///
+    /// This returns the measured value from the previous run if the timer is idle. If it is in
+    /// running state, the current measured value is given.
+    pub fn get(&self) -> Duration {
+        match *self {
+            Timer::Idle { measured } => measured,
+            Timer::Running { from, start_value } => {
+                start_value + Instant::now().duration_since(from)
+            }
+        }
+    }
+
+    /// Start the timer, preserving the stored value from the previous run
+    pub fn start(&mut self) {
+        match *self {
+            Timer::Idle { measured } => {
+                *self = Timer::Running {
+                    from: Instant::now(),
+                    start_value: measured,
+                };
+            }
+            _ => {}
+        }
+    }
+
+    /// Stop the timer if running
+    pub fn stop(&mut self) {
+        if let Timer::Running { from, start_value } = *self {
+            *self = Timer::Idle {
+                measured: start_value + Instant::now().duration_since(from),
+            };
+        }
+    }
+
+    /// Reset the timer, discarding all stored values and returning to idle state
+    pub fn reset(&mut self) {
+        *self = Timer::new();
+    }
+
+    /// Start the timer from a fresh value
+    pub fn restart(&mut self) {
+        *self = Timer::Running {
+            from: Instant::now(),
+            start_value: Duration::default(),
+        };
+    }
+}
 
 /// Manage time in the engine
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -105,7 +196,7 @@ impl Time {
         self.real_delta_time = duration_to_f32(duration);
         self.real_delta_duration = duration;
         self.delta_time = self.real_delta_time * self.scale;
-        self.delta_duration = f32_to_duration(self.delta_time);
+        self.delta_duration = duration_from_seconds(self.delta_time);
         self.real_total_duration += self.real_delta_duration;
         self.total_duration += self.delta_duration;
     }
@@ -115,25 +206,37 @@ impl Time {
         self.real_fixed_delta_time = duration_to_f32(duration);
         self.real_fixed_delta_duration = duration;
         self.fixed_delta_time = self.real_fixed_delta_time * self.scale;
-        self.fixed_delta_duration = f32_to_duration(self.fixed_delta_time)
+        self.fixed_delta_duration = duration_from_seconds(self.fixed_delta_time)
     }
 
     /// Set the time scale factor
     pub fn set_scale(&mut self, new_scale: f32) {
         assert!(new_scale >= 0.0);
-        assert!(new_scale != std::f32::INFINITY);
+        assert_ne!(new_scale, std::f32::INFINITY);
         self.scale = new_scale;
     }
 }
 
-fn duration_to_f32(duration: Duration) -> f32 {
+/// Convert the given [`Duration`] to seconds value in [`f32`] format
+pub fn duration_to_f32(duration: Duration) -> f32 {
     duration.as_secs_f32() + duration.subsec_nanos() as f32 / 1.0e9
 }
 
-fn duration_to_f64(duration: Duration) -> f64 {
+/// Convert the given [`Duration`] to seconds value in [`f64`] format
+pub fn duration_to_f64(duration: Duration) -> f64 {
     duration.as_secs_f64() + duration.subsec_nanos() as f64 / 1.0e9
 }
 
-fn f32_to_duration(seconds: f32) -> Duration {
+/// Convert the given [`Duration`] to nanoseconds value in [`u64`] format
+///
+/// # Overflow
+///
+/// The returned value might overflow if the given duration is too long.
+pub fn duration_to_nanoseconds(duration: Duration) -> u64 {
+    duration.as_nanos() as u64
+}
+
+/// Convert the given seconds value in [`f32`] format to [`Duration`]
+pub fn duration_from_seconds(seconds: f32) -> Duration {
     Duration::new(seconds as u64, ((seconds % 1.0) * 1.0e9) as u32)
 }
