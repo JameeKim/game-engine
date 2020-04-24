@@ -7,6 +7,7 @@
     missing_debug_implementations
 )]
 
+pub use game_engine_app as app;
 pub use game_engine_core as core;
 pub use game_engine_core::{ecs, math};
 pub use game_engine_transform as transform;
