@@ -1,11 +1,23 @@
 use crate::components::{Children, Parent, PreviousParent};
+use crate::core::systems::{types, SystemDesc, SystemType};
 use crate::ecs::command::CommandBuffer;
 use crate::ecs::entity::Entity;
 use crate::ecs::filter::filter_fns::{changed, component};
 use crate::ecs::query::{IntoQuery, Read, TryRead};
 use crate::ecs::schedule::Schedulable;
 use crate::ecs::system::{SubWorld, SystemBuilder};
+use crate::ecs::world::World;
 use std::collections::{HashMap, HashSet};
+
+/// System descriptor(builder) for maintaining hierarchy information from [`Parent`] components
+///
+/// This is a wrapper for [`build_hierarchy_sync_system`].
+///
+/// [`Parent`]: ../components/struct.Parent.html
+/// [`build_hierarchy_sync_system`]: ./fn.build_hierarchy_sync_system.html
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash, SystemDesc)]
+#[system_desc(type(types::Parallel), fn(build_hierarchy_sync_system))]
+pub struct HierarchySyncSystem;
 
 /// Build a system that maintains the hierarchy information collected from [`Parent`] components
 ///
@@ -22,7 +34,7 @@ use std::collections::{HashMap, HashSet};
 /// [`Parent`]: ../components/struct.Parent.html
 /// [`Children`]: ../components/struct.Children.html
 /// [`legion`]: ../../legion/index.html
-pub fn build_hierarchy_sync_system() -> Box<dyn Schedulable> {
+pub fn build_hierarchy_sync_system(_: &mut World) -> Box<dyn Schedulable> {
     SystemBuilder::new("HierarchySync")
         // entities whose `Parent` component are removed
         .with_query(<Read<PreviousParent>>::query().filter(!component::<Parent>()))
@@ -181,7 +193,7 @@ mod tests {
     #[test]
     fn hierarchy_sync_system() {
         let mut world = World::new();
-        let system = build_hierarchy_sync_system();
+        let system = build_hierarchy_sync_system(&mut world);
 
         // initial hierarchy
         // <-- parent                 child -->

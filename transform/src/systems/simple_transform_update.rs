@@ -1,12 +1,17 @@
 use crate::components::{Parent, ParentTransform, Position, Rotation, WorldTransform};
+use crate::core::systems::{types, SystemDesc, SystemType};
 use crate::ecs::filter::filter_fns::{changed, component};
 use crate::ecs::query::{IntoQuery, Read, TryRead, Write};
 use crate::ecs::schedule::Schedulable;
 use crate::ecs::system::SystemBuilder;
+use crate::ecs::world::World;
 
 macro_rules! transform_update_system_fn {
     (
-        $( #[$attrs:meta] )*
+        $( #[$struct_attrs:meta] )*
+        pub struct $struct_name:ident;
+
+        $( #[$fn_attrs:meta] )*
         pub fn $fn_name:ident<$comp:ident>($system_name:expr) -> Box<dyn Schedulable> {
             filters: {
                 $( update: $update_filter:expr, )?
@@ -14,8 +19,13 @@ macro_rules! transform_update_system_fn {
             }
         }
     ) => {
-        $( #[$attrs] )*
-        pub fn $fn_name() -> Box<dyn Schedulable> {
+        $( #[$struct_attrs] )*
+        #[derive(SystemDesc)]
+        #[system_desc(type(types::Parallel), fn($fn_name))]
+        pub struct $struct_name;
+
+        $( #[$fn_attrs] )*
+        pub fn $fn_name(_: &mut World) -> Box<dyn Schedulable> {
             SystemBuilder::new($system_name)
                 // Position only
                 .with_query(
@@ -97,6 +107,16 @@ macro_rules! transform_update_system_fn {
 }
 
 transform_update_system_fn! {
+    /// System descriptor(builder) for updating [`ParentTransform`] components for entities with
+    /// [`Parent`] component
+    ///
+    /// This is a wrapper of [`build_parent_transform_update_system`].
+    ///
+    /// [`ParentTransform`]: ../components/struct.ParentTransform.html
+    /// [`Parent`]: ../components/struct.Parent.html
+    /// [`build_parent_transform_update_system`]: ./fn.build_parent_transform_update_system.html
+    pub struct ParentTransformUpdateSystem;
+
     /// Build a system that updates [`ParentTransform`] component from [`Position`] and/or [`Rotation`] components
     ///
     /// This system only updates entities with [`Parent`] component. It also adds any missing [`ParentTransform`]
@@ -117,6 +137,15 @@ transform_update_system_fn! {
 }
 
 transform_update_system_fn! {
+    /// System descriptor(builder) for updating [`WorldTransform`] components for entities at the
+    /// root of hierarchy
+    ///
+    /// This is a wrapper of [`build_world_transform_update_system`].
+    ///
+    /// [`WorldTransform`]: ../components/struct.WorldTransform.html
+    /// [`build_world_transform_update_system`]: ./fn.build_world_transform_update_system.html
+    pub struct WorldTransformUpdateSystem;
+
     /// Build a system that updates [`WorldTransform`] component from [`Position`] and/or [`Rotation`] components
     ///
     /// This system does **NOT** update the component for entities that have [`Parent`] component. This means that only
@@ -147,7 +176,7 @@ mod tests {
     #[test]
     fn world_transform_update_system() {
         let mut world = World::new();
-        let system = build_system();
+        let system = build_system(&mut world);
 
         let t = WorldTransform::new();
         let p = Position::from_xyz(1.0, 2.0, 3.0);

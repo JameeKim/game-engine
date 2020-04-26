@@ -2,7 +2,9 @@
 
 use crate::ecs::schedule::Schedulable;
 use crate::ecs::system::SystemBuilder;
+use crate::ecs::world::World;
 use crate::sized_queue::SizedQueue;
+use crate::systems::{types, SystemDesc, SystemType};
 use crate::time::{duration_to_nanoseconds, Time};
 use serde::{Deserialize, Serialize};
 use std::thread::{sleep, yield_now};
@@ -217,11 +219,22 @@ fn nanoseconds_to_fps(nanoseconds: f32) -> f32 {
     1.0e9 / nanoseconds
 }
 
+/// System descriptor(builder) for fps counting
+///
+/// This is a wrapper for [`build_fps_count_system`].
+///
+/// [`build_fps_count_system`]: ./fn.build_fps_count_system.html
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash, SystemDesc)]
+#[system_desc(type(types::Parallel), fn(build_fps_count_system))]
+pub struct FpsCountSystem;
+
 /// Build a system that measures frame per second value
 ///
 /// The `size` parameter is for determining the size of the queue that stores the last fps values.
 /// Thus, it impacts how the average fps value is calculated.
-pub fn build_fps_count_system() -> Box<dyn Schedulable> {
+pub fn build_fps_count_system(world: &mut World) -> Box<dyn Schedulable> {
+    world.resources.insert(FpsValue::new());
+
     SystemBuilder::new("FpsCount")
         .write_resource::<FpsValue>()
         .read_resource::<Time>()

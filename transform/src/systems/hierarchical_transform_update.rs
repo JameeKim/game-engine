@@ -1,16 +1,28 @@
 use crate::components::{Children, Parent, ParentTransform, Position, Rotation, WorldTransform};
+use crate::core::systems::{types, SystemDesc, SystemType};
 use crate::ecs::command::CommandBuffer;
 use crate::ecs::entity::Entity;
 use crate::ecs::filter::filter_fns::component;
 use crate::ecs::query::{IntoQuery, Read};
 use crate::ecs::schedule::Schedulable;
 use crate::ecs::system::{SubWorld, SystemBuilder};
+use crate::ecs::world::World;
 use crate::utils::entity_should_have_transform_in_sub_world;
+
+/// System descriptor(builder) for updating [`WorldTransform`] component of entities in hierarchy
+///
+/// This is a wrapper struct of [`build_hierarchical_transform_update_system`].
+///
+/// [`WorldTransform`]: ../components/struct.WorldTransform.html
+/// [`build_hierarchical_transform_update_system`]: ./fn.build_hierarchical_transform_update_system.html
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash, SystemDesc)]
+#[system_desc(type(types::Parallel), fn(build_hierarchical_transform_update_system))]
+pub struct HierarchicalTransformUpdateSystem;
 
 /// Build a system that updates [`WorldTransform`] component of entities in hierarchy
 ///
 /// [`WorldTransform`]: ../components/struct.WorldTransform.html
-pub fn build_hierarchical_transform_update_system() -> Box<dyn Schedulable> {
+pub fn build_hierarchical_transform_update_system(_: &mut World) -> Box<dyn Schedulable> {
     SystemBuilder::new("HierarchicalTransformUpdate")
         .with_query(
             <(Read<Children>, Read<WorldTransform>)>::query().filter(!component::<Parent>()),
@@ -72,7 +84,7 @@ mod tests {
     #[test]
     fn hierarchical_transform_update_system() {
         let mut world = World::new();
-        let system = build_system();
+        let system = build_system(&mut world);
 
         // Define positions, rotations, and parent transforms to use
 
